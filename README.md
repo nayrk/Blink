@@ -13,7 +13,7 @@ I am not affiliated with the company in any way. My goal and sole purpose was to
 
 **Location to save videos**
 
-You do not hhave to modify this unless you want to save the videos to another place other than your desktop.
+You do not have to modify this unless you want to save the videos to another place other than your desktop.
 - $saveDirectory = "C:\Users\$env:UserName\Desktop"
 
 **Your Blink Credentials**
