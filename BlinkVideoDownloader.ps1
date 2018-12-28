@@ -66,6 +66,10 @@ $headers = @{
     "TOKEN_AUTH" = "$authToken"
 }
 
+# Get list of devices tied such as sync module and cameras
+$uri = 'https://rest-'+ $region +'.immedia-semi.com/homescreen'
+$devices = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
+
 # Starting page number
 $pageNum = 1
 
@@ -91,11 +95,28 @@ while ( 1 )
         $timestamp = $video.created_at
         $network = $video.network_name
         $camera = $video.camera_name
-
+        $camera_id = $video.camera_id
+       
         # Create Blink Directory to store videos if it doesn't exist
         $path = "$saveDirectory\Blink\$network\$camera"
         if (-not (Test-Path $path)){
             New-Item  -ItemType Directory -Path $path
+        }
+
+        # Get Camera Thumbnail
+        # Match device_id with camera_id for uniqueness to prevent duplicate names like "Front Door"
+        foreach($device in $devices.devices){
+            if($device.device_id -eq $camera_id){
+                # Location to save the thumbnail
+                $thumbPath = "$path\" + "thumbnail_" + $device.thumbnail.Split("/")[-1] + ".jpg"
+
+                # Skip if already downloaded
+                if (-not (Test-Path $thumbPath)){
+                    # Download the thumbnail if it doesn't exist already
+                    $thumbURL = 'https://rest-'+ $region +'.immedia-semi.com' + $device.thumbnail + ".jpg"
+                    Invoke-RestMethod -UseBasicParsing $thumbURL -Method Get -Headers $headers -OutFile $thumbPath
+                }  
+            }               
         }
 
         # Get video timestamp in local time
@@ -113,5 +134,7 @@ while ( 1 )
     }
     $pageNum += 1
 }
-echo "All videos downloaded to $saveDirectory\Blink\"
+echo "All new videos and thumbnails downloaded to $saveDirectory\Blink\"
+
+# Remove "pause" command below for automation through Windows Scheduler
 pause
