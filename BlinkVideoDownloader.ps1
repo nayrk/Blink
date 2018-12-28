@@ -109,4 +109,4 @@ while ( 1 )
     }
     $pageNum += 1
 }
-echo "All videos downloaded to $WorkingDir\Blink\"
+echo "All videos downloaded to $saveDirectory\Blink\"
