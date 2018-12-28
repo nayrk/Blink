@@ -31,8 +31,8 @@ $blinkAPIServer = 'prod.immedia-semi.com'
 #
 #######################################################################################################################
 
-if(!$email) { Write-Host 'Please enter your email by modifying the line: $email = "Your Email Here"'; exit;}
-if(!$password) { Write-Host 'Please enter your password by modifying the line: $password = "Your Password Here"'; exit;}
+if($email -eq "Your Email Here") { Write-Host 'Please enter your email by modifying the line: $email = "Your Email Here"'; exit;}
+if($password -eq "Your Password Here") { Write-Host 'Please enter your password by modifying the line: $password = "Your Password Here"'; exit;}
 
 # Headers to send to Blink's server for authentication
 $headers = @{
