@@ -51,7 +51,11 @@ $uri = "https://$blinkAPIServer/login"
 
 # Authenticate credentials with Blink Server and get our token for future requests
 $response = Invoke-RestMethod -UseBasicParsing $uri -Method Post -Headers $headers -Body $body
- 
+if(-not $response){
+    echo "Invalid credentials provided. Please verify email and password."
+    exit
+}
+
 # Get the object data
 $region = $response.region.psobject.properties.name
 $authToken = $response.authtoken.authtoken
@@ -110,3 +114,4 @@ while ( 1 )
     $pageNum += 1
 }
 echo "All videos downloaded to $saveDirectory\Blink\"
+pause
