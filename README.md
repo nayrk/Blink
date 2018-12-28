@@ -3,9 +3,13 @@
 I am not affiliated with the company in any way. My goal and sole purpose was to view my videos on my desktop PC and for archival purposes.
 
 ## Usage
-Copy the code and paste it into NotePad. 
-Modify the following lines below. 
-Save file as "blink.ps1" or name of your choice.
+1) Copy the code and paste it into NotePad. 
+
+2) Modify the lines with your Blink credentials.
+
+3) Save file as "blink.ps1" or name of your choice.
+
+4) Right-Click saved file and "Run with Powershell".
 
 **Location to save videos**
 
