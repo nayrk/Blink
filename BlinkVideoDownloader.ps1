@@ -18,16 +18,16 @@
 $saveDirectory = "C:\Users\$env:UserName\Desktop"
 
 # Blink Credentials. Please fill in!
+# Please keep the quotation marks "
 $email = "Your Email Here"
 $password = "Your Password Here"
 
-# Blink's API Server, this is the URL you are directed to when you are prompted for IFTT Integration to "Grant Access"
+# Blink's API Server, this is the URL you are directed to when you are prompted for IFTTT Integration to "Grant Access"
 # You can verify this yourself to make sure you are sending the data where you expect it to be
 $blinkAPIServer = 'prod.immedia-semi.com'
 
-# Use this server below if you are in Germany
-#$blinkAPIServer = 'prde.immedia-semi.com'
-
+# Use this server below if you are in Germany. Remove the # symbol below.
+# $blinkAPIServer = 'prde.immedia-semi.com'
 
 #######################################################################################################################
 #
@@ -35,8 +35,8 @@ $blinkAPIServer = 'prod.immedia-semi.com'
 #
 #######################################################################################################################
 
-if($email -eq "Your Email Here") { Write-Host 'Please enter your email by modifying the line: $email = "Your Email Here"'; exit;}
-if($password -eq "Your Password Here") { Write-Host 'Please enter your password by modifying the line: $password = "Your Password Here"'; exit;}
+if($email -eq "Your Email Here") { Write-Host 'Please enter your email by modifying the line: $email = "Your Email Here"'; pause; exit;}
+if($password -eq "Your Password Here") { Write-Host 'Please enter your password by modifying the line: $password = "Your Password Here"'; pause; exit;}
 
 # Headers to send to Blink's server for authentication
 $headers = @{
@@ -57,6 +57,7 @@ $uri = "https://$blinkAPIServer/login"
 $response = Invoke-RestMethod -UseBasicParsing $uri -Method Post -Headers $headers -Body $body
 if(-not $response){
     echo "Invalid credentials provided. Please verify email and password."
+    pause
     exit
 }
 
