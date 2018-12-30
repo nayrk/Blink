@@ -2,6 +2,7 @@
 #
 # Author: Nayrk
 # Date: 12/28/2018
+# Last Updated: 12/29/2018
 # Purpose: To download all Blink videos locally to the PC. Existing videos will be skipped.
 # Output: All Blink videos downloaded in the following directory format.
 #         Default Location Desktop - "C:\Users\<UserName>\Desktop"
@@ -23,6 +24,9 @@ $password = "Your Password Here"
 # Blink's API Server, this is the URL you are directed to when you are prompted for IFTT Integration to "Grant Access"
 # You can verify this yourself to make sure you are sending the data where you expect it to be
 $blinkAPIServer = 'prod.immedia-semi.com'
+
+# Use this server below if you are in Germany
+#$blinkAPIServer = 'prde.immedia-semi.com'
 
 
 #######################################################################################################################
@@ -66,11 +70,46 @@ $headers = @{
     "TOKEN_AUTH" = "$authToken"
 }
 
-# Get list of devices tied such as sync module and cameras
-$uri = 'https://rest-'+ $region +'.immedia-semi.com/homescreen'
-$devices = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
+# Get list of networks
+$uri = 'https://rest-'+ $region +'.immedia-semi.com/networks/'
+$networks = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
+#echo $networks.summary.psobject.properties.name
+#exit
 
-# Starting page number
+# Iterate each network for cameras attached and create the sub-folders
+foreach($network_id in $networks.summary.psobject.properties.name)
+{
+    #echo "==========================================="
+    $networkName = $networks.summary.$network_id.name
+    #echo "Network: $networkName"
+    $uri = 'https://rest-'+ $region +".immedia-semi.com/network/$network_id/cameras"
+    $cameras = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
+    foreach($camera in $cameras.devicestatus){
+        $cameraThumbnail = $camera.thumbnail
+        $cameraName = $camera.name
+        #echo "Camera: $cameraName"
+        #echo "Thumbnail: $cameraThumbnail"
+        #echo ""
+
+        # Create Blink Directory to store videos if it doesn't exist
+        $path = "$saveDirectory\Blink\$networkName\$cameraName"
+        if (-not (Test-Path $path)){
+            $folder = New-Item  -ItemType Directory -Path $path
+        }
+
+        # Download camera thumbnail
+        $thumbURL = 'https://rest-'+ $region +'.immedia-semi.com' + $cameraThumbnail + ".jpg"
+        $thumbPath = "$path\" + "thumbnail_" + $camerathumbnail.Split("/")[-1] + ".jpg"
+        #echo $thumbPath
+        # Skip if already downloaded
+        if (-not (Test-Path $thumbPath)){
+            echo "Downloading thumbnail for $cameraName camera in $networkName."
+            Invoke-RestMethod -UseBasicParsing $thumbURL -Method Get -Headers $headers -OutFile $thumbPath
+        }
+    }
+}
+#exit
+
 $pageNum = 1
 
 # Continue to download videos from each page until all are downloaded
@@ -89,7 +128,6 @@ while ( 1 )
 
     # Go through each video information and get the download link and relevant information
     foreach($video in $response){
-
         # Video clip information
         $address = $video.address
         $timestamp = $video.created_at
@@ -97,28 +135,6 @@ while ( 1 )
         $camera = $video.camera_name
         $camera_id = $video.camera_id
        
-        # Create Blink Directory to store videos if it doesn't exist
-        $path = "$saveDirectory\Blink\$network\$camera"
-        if (-not (Test-Path $path)){
-            New-Item  -ItemType Directory -Path $path
-        }
-
-        # Get Camera Thumbnail
-        # Match device_id with camera_id for uniqueness to prevent duplicate names like "Front Door"
-        foreach($device in $devices.devices){
-            if($device.device_id -eq $camera_id){
-                # Location to save the thumbnail
-                $thumbPath = "$path\" + "thumbnail_" + $device.thumbnail.Split("/")[-1] + ".jpg"
-
-                # Skip if already downloaded
-                if (-not (Test-Path $thumbPath)){
-                    # Download the thumbnail if it doesn't exist already
-                    $thumbURL = 'https://rest-'+ $region +'.immedia-semi.com' + $device.thumbnail + ".jpg"
-                    Invoke-RestMethod -UseBasicParsing $thumbURL -Method Get -Headers $headers -OutFile $thumbPath
-                }  
-            }               
-        }
-
         # Get video timestamp in local time
         $videoTime = Get-Date -Date $timestamp -Format "yyyy-MM-dd_HH-mm-ss"
 
@@ -126,9 +142,10 @@ while ( 1 )
         $videoURL = 'https://rest-'+ $region +'.immedia-semi.com' + $address
         
         # Download video if it is new
+        $path = "$saveDirectory\Blink\$network\$camera"
         $videoPath = "$path\$videoTime.mp4"
         if (-not (Test-Path $videoPath)){
-            echo "Downloading video: $videoPath"
+            echo "Downloading video for $camera camera in $network."
             Invoke-RestMethod -UseBasicParsing $videoURL -Method Get -Headers $headers -OutFile $videoPath           
         }
     }
