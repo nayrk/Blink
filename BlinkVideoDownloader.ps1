@@ -99,7 +99,7 @@ foreach($network_id in $networks.summary.psobject.properties.name)
 
         # Download camera thumbnail
         $thumbURL = 'https://rest-'+ $region +'.immedia-semi.com' + $cameraThumbnail + ".jpg"
-        $thumbPath = "$path\" + "thumbnail_" + $camerathumbnail.Split("/")[-1] + ".jpg"
+        $thumbPath = "$path\" + "thumbnail_" + $cameraThumbnail.Split("/")[-1] + ".jpg"
         #echo $thumbPath
         # Skip if already downloaded
         if (-not (Test-Path $thumbPath)){
