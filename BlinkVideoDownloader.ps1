@@ -126,7 +126,7 @@ while ( 1 )
     $response = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
     
     # No more videos to download, exit from loop
-    if(-not $response){
+    if(-not $response.videos){
         break
     }
 
