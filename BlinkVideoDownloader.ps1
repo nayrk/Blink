@@ -2,7 +2,7 @@
 #
 # Author: Nayrk
 # Date: 12/28/2018
-# Last Updated: 12/29/2018
+# Last Updated: 2/17/2019
 # Purpose: To download all Blink videos locally to the PC. Existing videos will be skipped.
 # Output: All Blink videos downloaded in the following directory format.
 #         Default Location Desktop - "C:\Users\<UserName>\Desktop"
