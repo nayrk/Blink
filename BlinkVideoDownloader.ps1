@@ -117,7 +117,10 @@ $pageNum = 1
 while ( 1 )
 {
     # List of videos from Blink's server
-    $uri = 'https://rest-'+ $region +'.immedia-semi.com/api/v2/videos/page/' + $pageNum
+    # $uri = 'https://rest-'+ $region +'.immedia-semi.com/api/v2/videos/page/' + $pageNum
+    
+    # Changed to use old endpoint
+    $uri = 'https://rest-'+ $region +'.immedia-semi.com/api/v2/videos/changed?since=2016-01-01T23:11:21+0000&page=' + $pageNum
 
     # Get the list of video clip information from each page from Blink
     $response = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
@@ -128,7 +131,7 @@ while ( 1 )
     }
 
     # Go through each video information and get the download link and relevant information
-    foreach($video in $response){
+    foreach($video in $response.videos){
         # Video clip information
         $address = $video.address
         $timestamp = $video.created_at
