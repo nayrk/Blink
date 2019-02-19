@@ -2,7 +2,7 @@
 #
 # Author: Nayrk
 # Date: 12/28/2018
-# Last Updated: 2/17/2019
+# Last Updated: 2/19/2019
 # Purpose: To download all Blink videos locally to the PC. Existing videos will be skipped.
 # Output: All Blink videos downloaded in the following directory format.
 #         Default Location Desktop - "C:\Users\<UserName>\Desktop"
@@ -149,8 +149,15 @@ while ( 1 )
         $path = "$saveDirectory\Blink\$network\$camera"
         $videoPath = "$path\$videoTime.mp4"
         if (-not (Test-Path $videoPath)){
-            echo "Downloading video for $camera camera in $network."
-            Invoke-RestMethod -UseBasicParsing $videoURL -Method Get -Headers $headers -OutFile $videoPath           
+            try {
+                Invoke-RestMethod -UseBasicParsing $videoURL -Method Get -Headers $headers -OutFile $videoPath 
+                $httpCode = $_.Exception.Response.StatusCode.value__        
+                if($httpCode -ne 404){
+                    echo "Downloading video for $camera camera in $network."
+                }   
+            } catch { 
+                # Left empty to prevent spam when video file no longer exists
+            }
         }
     }
     $pageNum += 1
