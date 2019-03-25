@@ -79,6 +79,7 @@ $sync_units = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $head
 foreach($sync_unit in $sync_units.networks)
 {
     $network_id = $sync_unit.network_id
+    $networkName = $sync_unit.name
     
     foreach($camera in $sync_unit.cameras){
         $cameraName = $camera.name
