@@ -2,7 +2,7 @@
 #
 # Author: Nayrk
 # Date: 12/28/2018
-# Last Updated: 3/24/2019
+# Last Updated: 6/12/2019
 # Purpose: To download all Blink videos locally to the PC. Existing videos will be skipped.
 # Output: All Blink videos downloaded in the following directory format.
 #         Default Location Desktop - "C:\Users\<UserName>\Desktop"
@@ -64,6 +64,7 @@ if(-not $response){
 # Get the object data
 $region = $response.region.psobject.properties.name
 $authToken = $response.authtoken.authtoken
+$accountID = $response.account.id
 
 # Headers to send to Blink's server after authentication with our token
 $headers = @{
@@ -116,23 +117,26 @@ while ( 1 )
     # $uri = 'https://rest-'+ $region +'.immedia-semi.com/api/v2/videos/page/' + $pageNum
     
     # Changed to use old endpoint
-    $uri = 'https://rest-'+ $region +'.immedia-semi.com/api/v2/videos/changed?since=2016-01-01T23:11:21+0000&page=' + $pageNum
+    #$uri = 'https://rest-'+ $region +'.immedia-semi.com/api/v2/videos/changed?since=2016-01-01T23:11:21+0000&page=' + $pageNum
+
+    # Changed endpoint again
+    $uri = 'https://rest-'+ $region +'.immedia-semi.com/api/v1/accounts/'+ $accountID +'/media/changed?since=2015-04-19T23:11:20+0000&page=' + $pageNum
 
     # Get the list of video clip information from each page from Blink
     $response = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
     
     # No more videos to download, exit from loop
-    if(-not $response.videos){
+    if(-not $response.media){
         break
     }
 
     # Go through each video information and get the download link and relevant information
-    foreach($video in $response.videos){
+    foreach($video in $response.media){
         # Video clip information
-        $address = $video.address
+        $address = $video.media
         $timestamp = $video.created_at
         $network = $video.network_name
-        $camera = $video.camera_name
+        $camera = $video.device_name
         $camera_id = $video.camera_id
         $deleted = $video.deleted
         if($deleted -eq "True"){
