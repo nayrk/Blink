@@ -2,7 +2,7 @@
 #
 # Author: Nayrk
 # Date: 12/28/2018
-# Last Updated: 6/12/2019
+# Last Updated: 05/15/2020
 # Purpose: To download all Blink videos locally to the PC. Existing videos will be skipped.
 # Output: All Blink videos downloaded in the following directory format.
 #         Default Location Desktop - "C:\Users\<UserName>\Desktop"
@@ -11,20 +11,21 @@
 #
 # Notes: You can change anything below this section.
 # Credits: https://github.com/MattTW/BlinkMonitorProtocol
-#
+# Fixed By: colinreid89 on 05/15/2020
 #######################################################################################################################
 
 # Change saveDirectory directory if you want the Blink Files to be saved somewhere else, default is user Desktop
-$saveDirectory = "C:\Users\$env:UserName\Desktop"
+#$saveDirectory = "C:\Users\$env:UserName\Desktop"
+$saveDirectory = "C:\temp\Blink"
 
 # Blink Credentials. Please fill in!
 # Please keep the quotation marks "
-$email = "Your Email Here"
-$password = "Your Password Here"
+$email = "youremail@address.com"
+$password = "your password"
 
 # Blink's API Server, this is the URL you are directed to when you are prompted for IFTTT Integration to "Grant Access"
 # You can verify this yourself to make sure you are sending the data where you expect it to be
-$blinkAPIServer = 'prod.immedia-semi.com'
+$blinkAPIServer = 'rest-prod.immedia-semi.com'
 
 # Use this server below if you are in Germany. Remove the # symbol below.
 # $blinkAPIServer = 'prde.immedia-semi.com'
@@ -51,7 +52,8 @@ $body = @{
 } | ConvertTo-Json
 
 # Login URL of Blink API
-$uri = "https://$blinkAPIServer/login"
+#$uri = "https://$blinkAPIServer/api"
+$uri = "https://rest-prod.immedia-semi.com/api/v4/account/login"
 
 # Authenticate credentials with Blink Server and get our token for future requests
 $response = Invoke-RestMethod -UseBasicParsing $uri -Method Post -Headers $headers -Body $body
@@ -62,9 +64,14 @@ if(-not $response){
 }
 
 # Get the object data
-$region = $response.region.psobject.properties.name
+$region = $response.region.tier
 $authToken = $response.authtoken.authtoken
 $accountID = $response.account.id
+
+#echo $response
+#echo $region
+#echo $authToken
+#echo $accountID
 
 # Headers to send to Blink's server after authentication with our token
 $headers = @{
@@ -73,10 +80,14 @@ $headers = @{
 }
 
 # Get list of networks
+#$uri = "https://rest-u017.immedia-semi.com/api/v1/camera/usage"
 $uri = 'https://rest-'+ $region +".immedia-semi.com/api/v1/camera/usage"
+#echo $uri
 
 # Use old endpoint to get list of cameras with respect to network id
 $sync_units = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
+#echo $sync_units
+
 foreach($sync_unit in $sync_units.networks)
 {
     $network_id = $sync_unit.network_id
@@ -86,7 +97,8 @@ foreach($sync_unit in $sync_units.networks)
         $cameraName = $camera.name
         $cameraId = $camera.id
         $uri = 'https://rest-'+ $region +".immedia-semi.com/network/$network_id/camera/$cameraId"
-     
+        
+        
         $camera = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
         $cameraThumbnail = $camera.camera_status.thumbnail
 
