@@ -75,7 +75,7 @@ $accountID = $response.account.id
 
 # Headers to send to Blink's server after authentication with our token
 $headers = @{
-    "Host" = "$blinkAPIServer"
+    #"Host" = "$blinkAPIServer" #Commented out as the API changed on 09/07/2020 and began to error. Removing this fixed it.
     "TOKEN_AUTH" = "$authToken"
 }
 
