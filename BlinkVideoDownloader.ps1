@@ -75,7 +75,7 @@ $accountID = $response.account.id
 
 # Headers to send to Blink's server after authentication with our token
 $headers = @{
-    "Host" = "$blinkAPIServer"
+    # "Host" = "$blinkAPIServer"
     "TOKEN_AUTH" = "$authToken"
 }
 
