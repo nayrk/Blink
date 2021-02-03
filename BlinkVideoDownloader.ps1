@@ -2,7 +2,7 @@
 #
 # Author: Nayrk
 # Date: 12/28/2018
-# Last Updated: 05/15/2020
+# Last Updated: 02/03/2021
 # Purpose: To download all Blink videos locally to the PC. Existing videos will be skipped.
 # Output: All Blink videos downloaded in the following directory format.
 #         Default Location Desktop - "C:\Users\<UserName>\Desktop"
@@ -12,6 +12,8 @@
 # Notes: You can change anything below this section.
 # Credits: https://github.com/MattTW/BlinkMonitorProtocol
 # Fixed By: colinreid89 on 05/15/2020
+# Fixed By: tyuhas on 02/03/2021
+# Updates: Added infinite loop to re-run every 30 minutes as a keep alive to bypass pin prompt from Blink/Amazon
 #######################################################################################################################
 
 # Change saveDirectory directory if you want the Blink Files to be saved somewhere else, default is user Desktop
@@ -20,8 +22,8 @@ $saveDirectory = "C:\temp\Blink"
 
 # Blink Credentials. Please fill in!
 # Please keep the quotation marks "
-$email = "youremail@address.com"
-$password = "your password"
+$email = "Your Email Here"
+$password = "Your Password Here"
 
 # Blink's API Server, this is the URL you are directed to when you are prompted for IFTTT Integration to "Grant Access"
 # You can verify this yourself to make sure you are sending the data where you expect it to be
@@ -68,118 +70,146 @@ $region = $response.region.tier
 $authToken = $response.authtoken.authtoken
 $accountID = $response.account.id
 
+# Fix provided by @tyuhas 
+$clientID = $response.client.id
+
 #echo $response
 #echo $region
 #echo $authToken
 #echo $accountID
 
-# Headers to send to Blink's server after authentication with our token
-$headers = @{
-    # "Host" = "$blinkAPIServer"
-    "TOKEN_AUTH" = "$authToken"
+$pin = Read-Host -Prompt 'Input PIN'
+$uri = 'https://rest-'+ $region +".immedia-semi.com/api/v4/account/"+ $accountID +'/client/'+ $clientID +"/pin/verify"
+#Headers to send for PIN authentication
+$pin_headers = @{
+"CONTENT_TYPE" = "application/json"
+"TOKEN_AUTH" = $authToken
 }
 
-# Get list of networks
-#$uri = "https://rest-u017.immedia-semi.com/api/v1/camera/usage"
-$uri = 'https://rest-'+ $region +".immedia-semi.com/api/v1/camera/usage"
-#echo $uri
+#PIN goes in the body
+$pin_body = @{
+"pin" = $pin
+}
 
-# Use old endpoint to get list of cameras with respect to network id
-$sync_units = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
-#echo $sync_units
+$response = Invoke-RestMethod -UseBasicParsing $uri -Method Post -Headers $pin_headers -Body $pin_body
 
-foreach($sync_unit in $sync_units.networks)
+while (1)
 {
-    $network_id = $sync_unit.network_id
-    $networkName = $sync_unit.name
-    
-    foreach($camera in $sync_unit.cameras){
-        $cameraName = $camera.name
-        $cameraId = $camera.id
-        $uri = 'https://rest-'+ $region +".immedia-semi.com/network/$network_id/camera/$cameraId"
-        
-        
-        $camera = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
-        $cameraThumbnail = $camera.camera_status.thumbnail
+	echo "Script will re-run every 30 minutes as a keep alive to Blink server."
 
-        # Create Blink Directory to store videos if it doesn't exist
-        $path = "$saveDirectory\Blink\$networkName\$cameraName"
-        if (-not (Test-Path $path)){
-            $folder = New-Item  -ItemType Directory -Path $path
-        }
+	#echo $response
+	#echo $region
+	#echo $authToken
+	#echo $accountID
 
-        # Download camera thumbnail
-        $thumbURL = 'https://rest-'+ $region +'.immedia-semi.com' + $cameraThumbnail + ".jpg"
-        $thumbPath = "$path\" + "thumbnail_" + $cameraThumbnail.Split("/")[-1] + ".jpg"
-        
-        # Skip if already downloaded
-        if (-not (Test-Path $thumbPath)){
-            echo "Downloading thumbnail for $cameraName camera in $networkName."
-            Invoke-RestMethod -UseBasicParsing $thumbURL -Method Get -Headers $headers -OutFile $thumbPath
-        }
-    }
+	# Headers to send to Blink's server after authentication with our token
+	$headers = @{
+		# "Host" = "$blinkAPIServer"
+		"TOKEN_AUTH" = "$authToken"
+	}
+
+	# Get list of networks
+	#$uri = "https://rest-u017.immedia-semi.com/api/v1/camera/usage"
+	$uri = 'https://rest-'+ $region +".immedia-semi.com/api/v1/camera/usage"
+	#echo $uri
+
+	# Use old endpoint to get list of cameras with respect to network id
+	$sync_units = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
+	#echo $sync_units
+
+	foreach($sync_unit in $sync_units.networks)
+	{
+		$network_id = $sync_unit.network_id
+		$networkName = $sync_unit.name
+		
+		foreach($camera in $sync_unit.cameras){
+			$cameraName = $camera.name
+			$cameraId = $camera.id
+			$uri = 'https://rest-'+ $region +".immedia-semi.com/network/$network_id/camera/$cameraId"
+			
+			
+			$camera = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
+			$cameraThumbnail = $camera.camera_status.thumbnail
+
+			# Create Blink Directory to store videos if it doesn't exist
+			$path = "$saveDirectory\Blink\$networkName\$cameraName"
+			if (-not (Test-Path $path)){
+				$folder = New-Item  -ItemType Directory -Path $path
+			}
+
+			# Download camera thumbnail
+			$thumbURL = 'https://rest-'+ $region +'.immedia-semi.com' + $cameraThumbnail + ".jpg"
+			$thumbPath = "$path\" + "thumbnail_" + $cameraThumbnail.Split("/")[-1] + ".jpg"
+			
+			# Skip if already downloaded
+			if (-not (Test-Path $thumbPath)){
+				echo "Downloading thumbnail for $cameraName camera in $networkName."
+				Invoke-RestMethod -UseBasicParsing $thumbURL -Method Get -Headers $headers -OutFile $thumbPath
+			}
+		}
+	}
+
+	$pageNum = 1
+
+	# Continue to download videos from each page until all are downloaded
+	while ( 1 )
+	{
+		# List of videos from Blink's server
+		# $uri = 'https://rest-'+ $region +'.immedia-semi.com/api/v2/videos/page/' + $pageNum
+		
+		# Changed to use old endpoint
+		#$uri = 'https://rest-'+ $region +'.immedia-semi.com/api/v2/videos/changed?since=2016-01-01T23:11:21+0000&page=' + $pageNum
+
+		# Changed endpoint again
+		$uri = 'https://rest-'+ $region +'.immedia-semi.com/api/v1/accounts/'+ $accountID +'/media/changed?since=2015-04-19T23:11:20+0000&page=' + $pageNum
+
+		# Get the list of video clip information from each page from Blink
+		$response = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
+		
+		# No more videos to download, exit from loop
+		if(-not $response.media){
+			break
+		}
+
+		# Go through each video information and get the download link and relevant information
+		foreach($video in $response.media){
+			# Video clip information
+			$address = $video.media
+			$timestamp = $video.created_at
+			$network = $video.network_name
+			$camera = $video.device_name
+			$camera_id = $video.camera_id
+			$deleted = $video.deleted
+			if($deleted -eq "True"){
+				continue
+			}
+		   
+			# Get video timestamp in local time
+			$videoTime = Get-Date -Date $timestamp -Format "yyyy-MM-dd_HH-mm-ss"
+
+			# Download address of video clip
+			$videoURL = 'https://rest-'+ $region +'.immedia-semi.com' + $address
+			
+			# Download video if it is new
+			$path = "$saveDirectory\Blink\$network\$camera"
+			$videoPath = "$path\$videoTime.mp4"
+			if (-not (Test-Path $videoPath)){
+				try {
+					Invoke-RestMethod -UseBasicParsing $videoURL -Method Get -Headers $headers -OutFile $videoPath 
+					$httpCode = $_.Exception.Response.StatusCode.value__        
+					if($httpCode -ne 404){
+						echo "Downloading video for $camera camera in $network."
+					}   
+				} catch { 
+					# Left empty to prevent spam when video file no longer exists
+					echo $httpCode
+				}
+			}
+		}
+		$pageNum += 1
+	}
+	echo "All new videos and thumbnails downloaded to $saveDirectory\Blink\"
+	echo "Sleeping for 30 minutes before next run..."
+	# Sleep for 30 minutes
+	Start-Sleep -S 1800
 }
-
-$pageNum = 1
-
-# Continue to download videos from each page until all are downloaded
-while ( 1 )
-{
-    # List of videos from Blink's server
-    # $uri = 'https://rest-'+ $region +'.immedia-semi.com/api/v2/videos/page/' + $pageNum
-    
-    # Changed to use old endpoint
-    #$uri = 'https://rest-'+ $region +'.immedia-semi.com/api/v2/videos/changed?since=2016-01-01T23:11:21+0000&page=' + $pageNum
-
-    # Changed endpoint again
-    $uri = 'https://rest-'+ $region +'.immedia-semi.com/api/v1/accounts/'+ $accountID +'/media/changed?since=2015-04-19T23:11:20+0000&page=' + $pageNum
-
-    # Get the list of video clip information from each page from Blink
-    $response = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
-    
-    # No more videos to download, exit from loop
-    if(-not $response.media){
-        break
-    }
-
-    # Go through each video information and get the download link and relevant information
-    foreach($video in $response.media){
-        # Video clip information
-        $address = $video.media
-        $timestamp = $video.created_at
-        $network = $video.network_name
-        $camera = $video.device_name
-        $camera_id = $video.camera_id
-        $deleted = $video.deleted
-        if($deleted -eq "True"){
-            continue
-        }
-       
-        # Get video timestamp in local time
-        $videoTime = Get-Date -Date $timestamp -Format "yyyy-MM-dd_HH-mm-ss"
-
-        # Download address of video clip
-        $videoURL = 'https://rest-'+ $region +'.immedia-semi.com' + $address
-        
-        # Download video if it is new
-        $path = "$saveDirectory\Blink\$network\$camera"
-        $videoPath = "$path\$videoTime.mp4"
-        if (-not (Test-Path $videoPath)){
-            try {
-                Invoke-RestMethod -UseBasicParsing $videoURL -Method Get -Headers $headers -OutFile $videoPath 
-                $httpCode = $_.Exception.Response.StatusCode.value__        
-                if($httpCode -ne 404){
-                    echo "Downloading video for $camera camera in $network."
-                }   
-            } catch { 
-                # Left empty to prevent spam when video file no longer exists
-                echo $httpCode
-            }
-        }
-    }
-    $pageNum += 1
-}
-echo "All new videos and thumbnails downloaded to $saveDirectory\Blink\"
-
-# Remove "pause" command below for automation through Windows Scheduler
-pause
