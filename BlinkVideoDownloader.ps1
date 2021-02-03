@@ -5,7 +5,7 @@
 # Last Updated: 02/03/2021
 # Purpose: To download all Blink videos locally to the PC. Existing videos will be skipped.
 # Output: All Blink videos downloaded in the following directory format.
-#         Default Location Desktop - "C:\Users\<UserName>\Desktop"
+#         Default Location Desktop - "C:\temp\Blink"
 #         Sub-Folders - Blink --> Home Network Name --> Camera Name #1
 #                                                   --> Camera Name #2
 #
