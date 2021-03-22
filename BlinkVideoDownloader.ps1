@@ -13,7 +13,9 @@
 # Credits: https://github.com/MattTW/BlinkMonitorProtocol
 # Fixed By: colinreid89 on 05/15/2020
 # Fixed By: tyuhas on 02/03/2021
+# Fixed By: ttteee90 on 03/19/2021
 # Updates: Added infinite loop to re-run every 30 minutes as a keep alive to bypass pin prompt from Blink/Amazon
+#          03/22/2021 - Cleaned up the code and added more debug messages. Added try/catch on invalid pin.
 #######################################################################################################################
 
 # Change saveDirectory directory if you want the Blink Files to be saved somewhere else, default is user Desktop
@@ -51,11 +53,11 @@ $headers = @{
 $body = @{
     "email" = "$email"
     "password" = "$password"
+	"unique_id" = "00000000-1111-0000-1111-00000000000"
 } | ConvertTo-Json
 
 # Login URL of Blink API
-#$uri = "https://$blinkAPIServer/api"
-$uri = "https://rest-prod.immedia-semi.com/api/v4/account/login"
+$uri = "https://$blinkAPIServer/api/v5/account/login"
 
 # Authenticate credentials with Blink Server and get our token for future requests
 $response = Invoke-RestMethod -UseBasicParsing $uri -Method Post -Headers $headers -Body $body
@@ -63,40 +65,57 @@ if(-not $response){
     echo "Invalid credentials provided. Please verify email and password."
     pause
     exit
+} else {
+    echo "Authenticated with Blink successfully. Please check your email or SMS/Text on your phone for the pin."
 }
 
 # Get the object data
-$region = $response.region.tier
-$authToken = $response.authtoken.authtoken
-$accountID = $response.account.id
+$region = $response.account.tier   #region.tier
+$authToken = $response.auth.token
+$accountID = $response.account.account_id
+$userid = $response.account.user_id
 
 # Fix provided by @tyuhas 
-$clientID = $response.client.id
+$clientID = $response.account.client_id
 
 #echo $response
 #echo $region
 #echo $authToken
 #echo $accountID
+#echo $clientID
+
+
 
 $pin = Read-Host -Prompt 'Input PIN'
 $uri = 'https://rest-'+ $region +".immedia-semi.com/api/v4/account/"+ $accountID +'/client/'+ $clientID +"/pin/verify"
+#$uri = "https://rest-prod.immedia-semi.com/api/v4/account/"+ $accountID +'/client/'+ $clientID +"/pin/verify"
 #Headers to send for PIN authentication
 $pin_headers = @{
-"CONTENT_TYPE" = "application/json"
-"TOKEN_AUTH" = $authToken
+   "CONTENT-TYPE" = "application/json"
+   "TOKEN-AUTH" = $authToken
 }
+
+
 
 #PIN goes in the body
 $pin_body = @{
-"pin" = $pin
-}
+    "pin" = $pin
+} | ConvertTo-Json
 
-$response = Invoke-RestMethod -UseBasicParsing $uri -Method Post -Headers $pin_headers -Body $pin_body
+#Echo "URI:" $uri
+
+# Added try/catch to catch the invalid pin
+try {
+    $pin_response = Invoke-RestMethod -UseBasicParsing $uri -Method Post -Headers $pin_headers -Body $pin_body
+} catch {
+    echo "Invalid Pin response. Please re-run the script again and use the same pin within the first minute."
+    pause
+    exit
+}
 
 while (1)
 {
-	echo "Script will re-run every 30 minutes as a keep alive to Blink server."
-
+    echo "Script will re-run every 30 minutes as a keep alive to Blink server."
 	#echo $response
 	#echo $region
 	#echo $authToken
@@ -113,10 +132,9 @@ while (1)
 	$uri = 'https://rest-'+ $region +".immedia-semi.com/api/v1/camera/usage"
 	#echo $uri
 
-	# Use old endpoint to get list of cameras with respect to network id
-	$sync_units = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
-	#echo $sync_units
-
+	# Use old endpoint to get list of cameras with respect to network id    
+    $sync_units = Invoke-RestMethod -UseBasicParsing $uri -Method Get -Headers $headers
+    
 	foreach($sync_unit in $sync_units.networks)
 	{
 		$network_id = $sync_unit.network_id
